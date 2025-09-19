@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Кредитный калькулятор — быстрый расчёт</title>
+  <meta name="description" content="Быстрый онлайн-калькулятор кредита: рассчитать ежемесячный платёж, переплату и таблицу примеров." />
+  <style>
+    :root{--maxw:980px;--accent:#1d4ed8}
+    body{font-family:Arial,Helvetica,sans-serif;margin:18px;background:#f7f7fb;color:#111}
+    .wrap{max-width:var(--maxw);margin:0 auto;background:#fff;padding:18px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.06)}
+    h1{color:var(--accent);margin-top:0}
+    label{display:block;margin:8px 0;font-size:14px}
+    input[type="number"], select{padding:8px;width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:6px}
+    .row{display:flex;gap:12px}
+    .col{flex:1}
+    button{background:var(--accent);color:#fff;border:0;padding:10px 14px;border-radius:6px;cursor:pointer}
+    .result{margin-top:12px;padding:12px;background:#f1f5f9;border-radius:6px}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:8px;border:1px solid #e6e9ef;text-align:left;font-size:14px}
+    .ad{margin:16px 0;padding:12px;border:1px dashed #cbd5e1;background:#fbfcff;text-align:center}
+    .warning{margin-top:12px;padding:10px;background:#fff4e6;border-left:4px solid #ffb020}
+    footer{margin-top:18px;font-size:13px;color:#666}
+    @media(max-width:640px){.row{flex-direction:column}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Кредитный калькулятор</h1>
+    <p>Введите сумму, срок и ставку — получите ежемесячный платёж и пример переплаты.</p>
+
+    <div>
+      <label>Сумма (₽)</label>
+      <input id="amount" type="number" value="100000" min="0" />
+    </div>
+
+    <div class="row" style="margin-top:8px">
+      <div class="col">
+        <label>Срок (месяцев)</label>
+        <input id="months" type="number" value="12" min="1" />
+      </div>
+      <div class="col">
+        <label>Ставка (годовых %)</label>
+        <input id="rate" type="number" value="12" step="0.1" min="0" />
+      </div>
+    </div>
+
+    <div style="margin-top:12px">
+      <button id="calcBtn">Рассчитать</button>
+      <button id="resetBtn" style="background:#6b7280;margin-left:8px">Сброс</button>
+    </div>
+
+    <div id="result" class="result" aria-live="polite" style="display:none"></div>
+
+    <div class="ad" id="adPlaceholder">
+      <!-- AD PLACEHOLDER: вставьте сюда код рекламной сети (YAN / AdFox / myTarget) -->
+      <small>Здесь будет реклама — вставьте рекламный код в этот блок.</small>
+    </div>
+
+    <div class="warning">
+      <strong>Внимание:</strong> расчёты являются ориентировочными. Точные условия и комиссии уточняйте у кредитной организации.
+    </div>
+
+    <h2>Примеры</h2>
+    <table id="examples">
+      <thead><tr><th>Сумма</th><th>Срок</th><th>Ставка</th><th>Ежемесячный платёж</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <footer>Сайт сгенерирован автоматически. Для поддержки — редактируйте <code>docs/data/products.csv</code>.</footer>
+  </div>
+
+  <script>
+    // Аннуитетный расчёт
+    function monthlyPayment(amount, annualRate, months) {
+      var r = (annualRate / 100) / 12;
+      if (months <= 0) return null;
+      if (r === 0) return (amount / months);
+      var p = (amount * r) / (1 - Math.pow(1 + r, -months));
+      return p;
+    }
+
+    function formatRub(n) {
+      return Number(n).toLocaleString('ru-RU', {maximumFractionDigits:2});
+    }
+
+    // Примеры (статичные — можно перезаписать из CSV позже)
+    var examples = [
+      {amount:100000, months:12, rate:12},
+      {amount:200000, months:24, rate:10},
+      {amount:300000, months:36, rate:11.5}
+    ];
+
+    function renderExamples(){
+      var tbody = document.querySelector('#examples tbody');
+      tbody.innerHTML = '';
+      examples.forEach(function(x){
+        var pay = monthlyPayment(x.amount, x.rate, x.months);
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>'+formatRub(x.amount)+'</td><td>'+x.months+' мес.'+'</td><td>'+x.rate+'%</td><td>'+formatRub(pay)+'</td>';
+        tbody.appendChild(tr);
+      });
+    }
+
+    document.getElementById('calcBtn').addEventListener('click', function(){
+      var amount = parseFloat(document.getElementById('amount').value) || 0;
+      var months = parseInt(document.getElementById('months').value) || 0;
+      var rate = parseFloat(document.getElementById('rate').value) || 0;
+      if (amount <= 0 || months <= 0) { alert('Введите корректную сумму и срок'); return; }
+      var payment = monthlyPayment(amount, rate, months);
+      var total = payment * months;
+      var overpay = total - amount;
+      var html = '<strong>Ежемесячный платёж:</strong> ' + formatRub(payment) + ' ₽<br/>' +
+                 '<strong>Итого выплачено:</strong> ' + formatRub(total) + ' ₽<br/>' +
+                 '<strong>Переплата:</strong> ' + formatRub(overpay) + ' ₽';
+      var out = document.getElementById('result');
+      out.innerHTML = html;
+      out.style.display = 'block';
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', function(){
+      document.getElementById('amount').value = '100000';
+      document.getElementById('months').value = '12';
+      document.getElementById('rate').value = '12';
+      var out = document.getElementById('result');
+      out.style.display = 'none';
+      out.innerHTML = '';
+    });
+
+    // Инициализация
+    renderExamples();
+  </script>
+</body>
+</html>
